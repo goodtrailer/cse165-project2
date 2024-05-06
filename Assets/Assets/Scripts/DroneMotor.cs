@@ -11,7 +11,7 @@ public class DroneMotor : MonoBehaviour
     public float Speed { get; set; } = 3f;
 
     [field: SerializeField]
-    public bool IsFlying { get; set; } = false;
+    public bool IsFlying { get; set; } = true;
 
     [SerializeField]
     private LayerMask groundLayer;
@@ -20,22 +20,27 @@ public class DroneMotor : MonoBehaviour
     private LayerMask waypointLayer;
 
     [SerializeField]
-    private Texture fadeTexture;
+    private Fade deathFade;
 
     private Rigidbody rb;
 
     private Vector3 prevWaypoint;
     private Quaternion prevRotation = Quaternion.identity;
 
-    void Start()
+    [SerializeField]
+    private GestureRecognizer gestureRecognizer;
+
+    void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotation;
+        rb.useGravity = false;
     }
 
     void FixedUpdate()
     {
-        rb.velocity = IsFlying ? Direction * Speed : Vector3.zero;
+        float coefficient = gestureRecognizer.GetSimilarity("Closed", 0.98f);
+        rb.velocity = IsFlying ? Direction * coefficient * Speed : Vector3.zero;
     }
 
     void OnTriggerEnter(Collider other)
@@ -54,28 +59,16 @@ public class DroneMotor : MonoBehaviour
     }
 
     private const double fade_duration = 0.5;
-    private double deathTime = double.NegativeInfinity;
 
     IEnumerator Die()
     {
-        IsFlying = false;
-        deathTime = Time.time;
+        // IsFlying = false;
 
+        deathFade.FadeIn(fade_duration);
         yield return new WaitForSeconds((float)fade_duration);
-        
+        deathFade.FadeOut(fade_duration);
+
         transform.position = prevWaypoint;
         transform.rotation = prevRotation;
-    }
-
-    void OnGUI()
-    {
-        if (Time.time - deathTime > 2f * fade_duration || Time.time - deathTime < 0f)
-            GUI.color = new Color(1f, 1f, 1f, 0f);
-        else if (Time.time - deathTime > fade_duration)
-            GUI.color = new Color(1f, 1f, 1f, 1f - (float)((Time.time - deathTime - fade_duration) / fade_duration));
-        else
-            GUI.color = new Color(1f, 1f, 1f, (float)((Time.time - deathTime) / fade_duration));
-
-        GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), fadeTexture);
     }
 }
