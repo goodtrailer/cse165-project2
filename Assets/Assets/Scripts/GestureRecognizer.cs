@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEditor.Overlays;
@@ -16,7 +17,7 @@ public class Gesture
     [field: SerializeField]
     public float Similarity { get; private set; }
 
-    public UnityEvent OnRecognized;
+    public UnityEvent<bool> OnRecognized;
 
     [SerializeField]
     private List<Quaternion> data;
@@ -77,13 +78,21 @@ public class GestureRecognizer : MonoBehaviour
     private OVRSkeleton skeleton;
     private OVRHand hand;
 
-    private void Start()
+    void Awake()
     {
         skeleton = GetComponent<OVRSkeleton>();
         hand = GetComponent<OVRHand>();
 
         foreach (Gesture gesture in gestures)
             gestureNames.Add(gesture.Name, gesture);
+    }
+
+    public UnityEvent<bool> GetRecognizedEvent(string gestureName)
+    {
+        if (!gestureNames.ContainsKey(gestureName))
+            return null;
+
+        return gestureNames[gestureName].OnRecognized;
     }
 
     public float GetSimilarity(string gestureName, float threshold)
@@ -106,7 +115,12 @@ public class GestureRecognizer : MonoBehaviour
     void Update()
     {
         if (!hand.IsTracked)
+        {
+            if (previousGesture != null)
+                previousGesture.OnRecognized?.Invoke(false);
+            previousGesture = null;
             return;
+        }
 
         List<Quaternion> data = new List<Quaternion>();
         foreach (OVRBone bone in skeleton.Bones)
@@ -137,11 +151,17 @@ public class GestureRecognizer : MonoBehaviour
         if (maxSimilarity > recognizeThreshold)
         {
             if (previousGesture != maxGesture)
-                maxGesture.OnRecognized?.Invoke();
+            {
+                if (previousGesture != null)
+                    previousGesture.OnRecognized?.Invoke(false);
+                maxGesture.OnRecognized?.Invoke(true);
+            }
             previousGesture = maxGesture;
         }
         else
         {
+            if (previousGesture != null)
+                previousGesture.OnRecognized?.Invoke(false);
             previousGesture = null;
         }
 

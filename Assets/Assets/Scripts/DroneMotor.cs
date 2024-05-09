@@ -1,5 +1,6 @@
 using OVR.OpenVR;
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using static UnityEngine.UI.Image;
 
@@ -12,14 +13,14 @@ public class DroneMotor : MonoBehaviour
     [field: SerializeField]
     public float Speed { get; set; } = 3f;
 
-    [field: SerializeField]
-    public bool IsFlying { get; set; } = true;
-
     [SerializeField]
     private LayerMask groundLayer;
 
     [SerializeField]
     private LayerMask waypointLayer;
+
+    [SerializeField]
+    private bool isDead = false;
 
     [SerializeField]
     private Fade deathFade;
@@ -38,16 +39,16 @@ public class DroneMotor : MonoBehaviour
     [SerializeField]
     private int currentBone = 0;
 
-    // for direction
-    private bool startedMovement = false;
-    //private Vector3 initHandPos = Vector3.zero;
-    //private Vector3 headsetPos = Vector3.zero;
-    private Vector3 initOffset = Vector3.zero;
+    private bool isFlyingForward = false;
+    private Vector3 forwardDirection = Vector3.zero;
+    private TextMeshProUGUI forwardText;
 
+    private bool isFlyingOmni = false;
+    private Vector3 omniOriginOffset = Vector3.zero;
     private GameObject centerEyeAnchor;
-    private LineRenderer controlVisual;
+    private LineRenderer omniVisual;
 
-    private const double no_fly_duration = 3.0;
+    private const double no_fly_duration = 3.5;
 
     void Awake()
     {
@@ -56,27 +57,38 @@ public class DroneMotor : MonoBehaviour
         rb.useGravity = false;
 
         centerEyeAnchor = GameObject.Find("CenterEyeAnchor");
-        controlVisual = GameObject.Find("ControlVisual").GetComponent<LineRenderer>();
+        omniVisual = GameObject.Find("OmniVisual").GetComponent<LineRenderer>();
+        forwardText = GameObject.Find("ForwardText").GetComponent<TextMeshProUGUI>();
     }
 
     void Start()
     {
-        controlVisual.gameObject.SetActive(false);
+        omniVisual.gameObject.SetActive(false);
 
-        deathTimer.OnStart += (_, _) => IsFlying = false;
-        deathTimer.OnDone += (_, _) => IsFlying = true;
+        deathTimer.OnStart += (_, _) => isDead = true;
+        deathTimer.OnDone += (_, _) => isDead = false;
         deathTimer.StartTimer(no_fly_duration);
+
+        gestureRecognizer.GetRecognizedEvent("OK").AddListener(f =>
+        {
+            if (f)
+            {
+                isFlyingForward = !isFlyingForward;
+                forwardDirection = centerEyeAnchor.transform.forward;
+                forwardText.text = isFlyingForward ? "FORWARD MODE\n\n\n\n\n\n\n" : "";
+            }
+        });
     }
 
     void Update()
     {
-        controlVisual.positionCount = 2;
+        omniVisual.positionCount = 2;
 
-        controlVisual.transform.position = centerEyeAnchor.transform.position + initOffset;
-        controlVisual.SetPositions(new[]
+        omniVisual.transform.position = centerEyeAnchor.transform.position + omniOriginOffset;
+        omniVisual.SetPositions(new[]
         {
             Vector3.zero,
-            gestureRecognizer.GetBonePosition(currentBone) - controlVisual.transform.position,
+            gestureRecognizer.GetBonePosition(currentBone) - omniVisual.transform.position,
         });
 
         if (Input.GetKeyDown(KeyCode.A))
@@ -87,33 +99,33 @@ public class DroneMotor : MonoBehaviour
     {
         float coefficient = gestureRecognizer.GetSimilarity("Closed", 0.8f);
 
-        if (coefficient > 0)
+        if (!isFlyingForward && coefficient > 0)
         {
-            if (!startedMovement)
+            if (!isFlyingOmni)
             {
-                startedMovement = true;
-                controlVisual.gameObject.SetActive(true);
-
-                // headset offset
-                
-                initOffset = gestureRecognizer.GetBonePosition(currentBone) - centerEyeAnchor.transform.position;
+                isFlyingOmni = true;
+                omniVisual.gameObject.SetActive(true);
+                omniOriginOffset = gestureRecognizer.GetBonePosition(currentBone) - centerEyeAnchor.transform.position;
             }
 
-            Vector3 origin = centerEyeAnchor.transform.position + initOffset;
+            Vector3 origin = centerEyeAnchor.transform.position + omniOriginOffset;
 
-            Direction = gestureRecognizer.GetBonePosition(currentBone) - origin;
+            Direction = coefficient * (gestureRecognizer.GetBonePosition(currentBone) - origin);
 
             if (Direction.magnitude < 0.1f)
                 Direction = Vector3.zero;
         }
         else
         {
-            controlVisual.gameObject.SetActive(false);
-            startedMovement = false;
+            omniVisual.gameObject.SetActive(false);
+            isFlyingOmni = false;
             Direction = Vector3.zero;
         }
 
-        rb.velocity = IsFlying ? Direction.normalized * coefficient * Speed : Vector3.zero;
+        if (isFlyingForward)
+            Direction = forwardDirection;
+
+        rb.velocity = !isDead ? Direction.normalized * coefficient * Speed : Vector3.zero;
     }
 
     void OnTriggerEnter(Collider other)
