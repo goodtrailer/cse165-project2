@@ -24,6 +24,9 @@ public class DroneMotor : MonoBehaviour
     [SerializeField]
     private Fade deathFade;
 
+    [SerializeField]
+    private Timer deathTimer;
+
     private Rigidbody rb;
 
     private Vector3 prevWaypoint;
@@ -32,6 +35,9 @@ public class DroneMotor : MonoBehaviour
     [SerializeField]
     private GestureRecognizer gestureRecognizer;
 
+    [SerializeField]
+    private int currentBone = 0;
+
     // for direction
     private bool startedMovement = false;
     //private Vector3 initHandPos = Vector3.zero;
@@ -39,8 +45,9 @@ public class DroneMotor : MonoBehaviour
     private Vector3 initOffset = Vector3.zero;
 
     private GameObject centerEyeAnchor;
-
     private LineRenderer controlVisual;
+
+    private const double no_fly_duration = 3.0;
 
     void Awake()
     {
@@ -54,47 +61,54 @@ public class DroneMotor : MonoBehaviour
 
     void Start()
     {
-        controlVisual.enabled = false;
+        controlVisual.gameObject.SetActive(false);
+
+        deathTimer.OnStart += (_, _) => IsFlying = false;
+        deathTimer.OnDone += (_, _) => IsFlying = true;
+        deathTimer.StartTimer(no_fly_duration);
     }
 
     void Update()
     {
         controlVisual.positionCount = 2;
 
+        controlVisual.transform.position = centerEyeAnchor.transform.position + initOffset;
         controlVisual.SetPositions(new[]
         {
-            centerEyeAnchor.transform.position + initOffset,
-            gestureRecognizer.transform.position,
+            Vector3.zero,
+            gestureRecognizer.GetBonePosition(currentBone) - controlVisual.transform.position,
         });
+
+        if (Input.GetKeyDown(KeyCode.A))
+            currentBone++;
     }
 
     void FixedUpdate()
     {
-        float coefficient = gestureRecognizer.GetSimilarity("Closed", 0.98f);
+        float coefficient = gestureRecognizer.GetSimilarity("Closed", 0.8f);
 
-        
         if (coefficient > 0)
         {
             if (!startedMovement)
             {
                 startedMovement = true;
-                controlVisual.enabled = true;
+                controlVisual.gameObject.SetActive(true);
 
                 // headset offset
-                initOffset = gestureRecognizer.transform.position - centerEyeAnchor.transform.position;
-
+                
+                initOffset = gestureRecognizer.GetBonePosition(currentBone) - centerEyeAnchor.transform.position;
             }
 
             Vector3 origin = centerEyeAnchor.transform.position + initOffset;
 
-            Direction = gestureRecognizer.transform.position - origin;
+            Direction = gestureRecognizer.GetBonePosition(currentBone) - origin;
 
-            if (Direction.magnitude < 0.1)
+            if (Direction.magnitude < 0.1f)
                 Direction = Vector3.zero;
         }
         else
         {
-            controlVisual.enabled = false;
+            controlVisual.gameObject.SetActive(false);
             startedMovement = false;
             Direction = Vector3.zero;
         }
@@ -105,9 +119,7 @@ public class DroneMotor : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         if ((groundLayer & (1 << other.gameObject.layer)) != 0)
-        {
             StartCoroutine(Die());
-        }
 
         if ((waypointLayer & (1 << other.gameObject.layer)) != 0)
         {
@@ -118,11 +130,10 @@ public class DroneMotor : MonoBehaviour
     }
 
     private const double fade_duration = 0.5;
-    private const double no_fly_duration = 3.0;
 
     IEnumerator Die()
     {
-        IsFlying = false;
+        deathTimer.StartTimer(no_fly_duration);
 
         deathFade.FadeIn(fade_duration);
         yield return new WaitForSeconds((float)fade_duration);
@@ -130,8 +141,5 @@ public class DroneMotor : MonoBehaviour
 
         transform.position = prevWaypoint;
         transform.rotation = prevRotation;
-
-        yield return new WaitForSeconds((float)no_fly_duration);
-        IsFlying = true;
     }
 }

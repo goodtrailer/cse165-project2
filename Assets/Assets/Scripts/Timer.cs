@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using TMPro;
 using UnityEngine;
 
 public class Timer : MonoBehaviour
@@ -15,9 +17,12 @@ public class Timer : MonoBehaviour
 
     public double TimeElapsed => Time.time - TimeStart;
 
-    public double TimeLeft => TimeEnd - TimeStart;
+    public double TimeLeft => TimeEnd - Time.time;
 
     public bool IsRunning { get; private set; } = false;
+
+    [SerializeField]
+    private TextMeshProUGUI text;
 
     public void StartTimer(double duration)
     {
@@ -41,11 +46,31 @@ public class Timer : MonoBehaviour
 
     void Update()
     {
-        if (!IsRunning || Time.time < TimeEnd)
+        if (!IsRunning)
             return;
 
-        IsRunning = false;
-        OnDone?.Invoke(this, null);
-        OnStop?.Invoke(this, null);
+        if (text != null)
+            text.text = string.Format("{0:0.00}", TimeLeft);
+
+        if (Time.time > TimeEnd)
+        {
+            IsRunning = false;
+            OnDone?.Invoke(this, null);
+            OnStop?.Invoke(this, null);
+
+            if (text != null)
+            {
+                text.text = "GO";
+                StartCoroutine(HideGo());
+            }
+        }
+    }
+
+    IEnumerator HideGo()
+    {
+        yield return new WaitForSeconds(1f);
+
+        if (text != null)
+            text.text = "";
     }
 }

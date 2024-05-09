@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Overlays;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -18,9 +19,9 @@ public class Gesture
     public UnityEvent OnRecognized;
 
     [SerializeField]
-    private List<Vector3> data;
+    private List<Quaternion> data;
 
-    public List<Vector3> Data
+    public List<Quaternion> Data
     {
         get => data;
 
@@ -28,13 +29,13 @@ public class Gesture
         {
             data = value;
             float total = 0f;
-            foreach (Vector3 d in data)
-                total += d.sqrMagnitude;
+            foreach (Quaternion d in data)
+                total += d.x * d.x + d.y * d.y + d.z * d.z + d.w * d.w;
             Magnitude = Mathf.Sqrt(total);
         }
     }
 
-    public void ComputeSimilarity(IList<Vector3> other)
+    public void ComputeSimilarity(IList<Quaternion> other)
     {
         if (data == null || data.Count != other.Count)
         {
@@ -43,13 +44,13 @@ public class Gesture
         }
 
         float otherTotal = 0f;
-        foreach (Vector3 d in other)
-            otherTotal += d.sqrMagnitude;
+        foreach (Quaternion d in other)
+            otherTotal += d.x * d.x + d.y * d.y + d.z * d.z + d.w * d.w;
         float otherMagnitude = Mathf.Sqrt(otherTotal);
 
         float cosineSimilarity = 0f;
         for (int i = 0; i < other.Count; i++)
-            cosineSimilarity += Vector3.Dot(other[i], data[i]);
+            cosineSimilarity += other[i].x * data[i].x + other[i].y * data[i].y + other[i].z * data[i].z + other[i].w * data[i].w;
         cosineSimilarity /= otherMagnitude * Magnitude;
 
         Similarity = cosineSimilarity * 0.5f + 0.5f;
@@ -74,10 +75,12 @@ public class GestureRecognizer : MonoBehaviour
     private Gesture previousGesture = null;
 
     private OVRSkeleton skeleton;
+    private OVRHand hand;
 
     private void Start()
     {
         skeleton = GetComponent<OVRSkeleton>();
+        hand = GetComponent<OVRHand>();
 
         foreach (Gesture gesture in gestures)
             gestureNames.Add(gesture.Name, gesture);
@@ -85,23 +88,29 @@ public class GestureRecognizer : MonoBehaviour
 
     public float GetSimilarity(string gestureName, float threshold)
     {
-        if (!gestureNames.ContainsKey(gestureName))
+        if (!hand.IsTracked || !gestureNames.ContainsKey(gestureName))
             return 0f;
 
         return Mathf.Clamp01((gestureNames[gestureName].Similarity - threshold) / (1f - threshold));
     }
 
+    public Vector3 GetBonePosition(int bone)
+    {
+        if (skeleton.Bones.Count == 0)
+            return Vector3.positiveInfinity;
+
+        return skeleton.Bones[bone % skeleton.Bones.Count].Transform.position;
+    }
+
 
     void Update()
     {
-        if (skeleton.Bones.Count == 0)
+        if (!hand.IsTracked)
             return;
 
-        List<Vector3> data = new List<Vector3>();
+        List<Quaternion> data = new List<Quaternion>();
         foreach (OVRBone bone in skeleton.Bones)
-        {
-            data.Add(skeleton.transform.InverseTransformPoint(bone.Transform.position));
-        }
+            data.Add(Quaternion.Inverse(skeleton.transform.rotation) *  bone.Transform.rotation);
 
         if (Input.GetKeyDown(KeyCode.Space) && isSaving)
         {
@@ -123,18 +132,20 @@ public class GestureRecognizer : MonoBehaviour
             }
         }
 
+        Gesture oldGesture = previousGesture;
+
         if (maxSimilarity > recognizeThreshold)
         {
             if (previousGesture != maxGesture)
-            {
                 maxGesture.OnRecognized?.Invoke();
-                Debug.Log("Gesture recognized: " + maxGesture.Name + ", " + maxGesture.Similarity);
-            }
             previousGesture = maxGesture;
         }
         else
         {
             previousGesture = null;
         }
+
+        if (previousGesture != oldGesture)
+            Debug.Log("Gesture recognized: " + (previousGesture?.Name ?? "null"));
     }
 }
