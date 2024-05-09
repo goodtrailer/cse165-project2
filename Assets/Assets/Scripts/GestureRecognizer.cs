@@ -91,6 +91,7 @@ public class GestureRecognizer : MonoBehaviour
         return Mathf.Clamp01((gestureNames[gestureName].Similarity - threshold) / (1f - threshold));
     }
 
+
     void Update()
     {
         if (skeleton.Bones.Count == 0)
