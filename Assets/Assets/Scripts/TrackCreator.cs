@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -14,6 +14,12 @@ public class TrackCreator : MonoBehaviour
 
     [SerializeField]
     private GameObject drone;
+
+    [SerializeField]
+    private Stopwatch lapStopwatch;
+
+    [SerializeField]
+    private TextMeshProUGUI lapFinishedText;
 
     private List<Vector3> waypointPositions = new List<Vector3>();
 
@@ -29,15 +35,21 @@ public class TrackCreator : MonoBehaviour
             w.gameObject.SetActive(false);
             waypoints.Add(w);
 
-            Func<int, UnityAction> y = (int idx) =>
+            Func<int, UnityAction> activateWaypoint = (int idx) =>
             {
                 return () =>
                 {
                     if (waypoints.Count > idx + 1)
                         waypoints[idx + 1].gameObject.SetActive(true);
+                    else
+                    {
+                        lapStopwatch.StopStopwatch();
+                        lapStopwatch.enabled = false;
+                        lapFinishedText.text = "FINISHED";
+                    }
                 };
             };
-            w.OnDestroyed.AddListener(y(i));
+            w.OnDestroyed.AddListener(activateWaypoint(i));
         }
         waypoints[0].gameObject.SetActive(true);
 

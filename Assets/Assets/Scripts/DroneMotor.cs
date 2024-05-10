@@ -28,6 +28,9 @@ public class DroneMotor : MonoBehaviour
     [SerializeField]
     private Timer deathTimer;
 
+    [SerializeField]
+    private Stopwatch lapStopwatch;
+
     private Rigidbody rb;
 
     private Vector3 prevWaypoint;
@@ -66,7 +69,12 @@ public class DroneMotor : MonoBehaviour
         omniVisual.gameObject.SetActive(false);
 
         deathTimer.OnStart += (_, _) => isDead = true;
-        deathTimer.OnDone += (_, _) => isDead = false;
+        deathTimer.OnDone += (_, _) =>
+        {
+            isDead = false;
+            if (!lapStopwatch.IsRunning)
+                lapStopwatch.StartStopwatch();
+        };
         deathTimer.StartTimer(no_fly_duration);
 
         gestureRecognizer.GetRecognizedEvent("OK").AddListener(f =>
@@ -97,9 +105,10 @@ public class DroneMotor : MonoBehaviour
 
     void FixedUpdate()
     {
-        float coefficient = gestureRecognizer.GetSimilarity("Closed", 0.8f);
+        float lesserCoefficient = gestureRecognizer.GetSimilarity("Closed", 0.775f);
+        float coefficient = gestureRecognizer.GetSimilarity("Closed", 0.825f);
 
-        if (!isFlyingForward && coefficient > 0)
+        if (!isFlyingForward && lesserCoefficient > 0)
         {
             if (!isFlyingOmni)
             {
@@ -110,7 +119,7 @@ public class DroneMotor : MonoBehaviour
 
             Vector3 origin = centerEyeAnchor.transform.position + omniOriginOffset;
 
-            Direction = coefficient * (gestureRecognizer.GetBonePosition(currentBone) - origin);
+            Direction = gestureRecognizer.GetBonePosition(currentBone) - origin;
 
             if (Direction.magnitude < 0.1f)
                 Direction = Vector3.zero;
