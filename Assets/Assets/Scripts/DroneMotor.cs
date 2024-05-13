@@ -13,6 +13,9 @@ public class DroneMotor : MonoBehaviour
     [field: SerializeField]
     public float Speed { get; set; } = 3f;
 
+    [field: SerializeField]
+    public float AngularSpeed { get; set; } = 90f;
+
     [SerializeField]
     private LayerMask groundLayer;
 
@@ -37,7 +40,11 @@ public class DroneMotor : MonoBehaviour
     private Quaternion prevRotation = Quaternion.identity;
 
     [SerializeField]
-    private GestureRecognizer gestureRecognizer;
+    private GestureRecognizer leftGestureRecognizer;
+
+    [SerializeField]
+    private GestureRecognizer rightGestureRecognizer;
+
 
     [SerializeField]
     private int currentBone = 0;
@@ -51,12 +58,13 @@ public class DroneMotor : MonoBehaviour
     private GameObject centerEyeAnchor;
     private LineRenderer omniVisual;
 
+    private bool isPointing = false;
+
     private const double no_fly_duration = 3.5;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.FreezeRotation;
         rb.useGravity = false;
 
         centerEyeAnchor = GameObject.Find("CenterEyeAnchor");
@@ -77,7 +85,7 @@ public class DroneMotor : MonoBehaviour
         };
         deathTimer.StartTimer(no_fly_duration);
 
-        gestureRecognizer.GetRecognizedEvent("OK").AddListener(f =>
+        leftGestureRecognizer.GetRecognizedEvent("OK").AddListener(f =>
         {
             if (f)
             {
@@ -86,6 +94,8 @@ public class DroneMotor : MonoBehaviour
                 forwardText.text = isFlyingForward ? "FORWARD MODE\n\n\n\n\n\n\n" : "";
             }
         });
+
+        rightGestureRecognizer.GetRecognizedEvent("Point").AddListener(p => isPointing = p);
     }
 
     void Update()
@@ -96,7 +106,7 @@ public class DroneMotor : MonoBehaviour
         omniVisual.SetPositions(new[]
         {
             Vector3.zero,
-            gestureRecognizer.GetBonePosition(currentBone) - omniVisual.transform.position,
+            leftGestureRecognizer.GetBonePosition(currentBone) - omniVisual.transform.position,
         });
 
         if (Input.GetKeyDown(KeyCode.A))
@@ -105,8 +115,15 @@ public class DroneMotor : MonoBehaviour
 
     void FixedUpdate()
     {
-        float lesserCoefficient = gestureRecognizer.GetSimilarity("Closed", 0.775f);
-        float coefficient = gestureRecognizer.GetSimilarity("Closed", 0.825f);
+        if (isDead)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            return;
+        }
+
+        float lesserCoefficient = leftGestureRecognizer.GetSimilarity("Closed", 0.85f);
+        float coefficient = leftGestureRecognizer.GetSimilarity("Closed", 0.88f);
 
         if (!isFlyingForward && lesserCoefficient > 0)
         {
@@ -114,12 +131,12 @@ public class DroneMotor : MonoBehaviour
             {
                 isFlyingOmni = true;
                 omniVisual.gameObject.SetActive(true);
-                omniOriginOffset = gestureRecognizer.GetBonePosition(currentBone) - centerEyeAnchor.transform.position;
+                omniOriginOffset = leftGestureRecognizer.GetBonePosition(currentBone) - centerEyeAnchor.transform.position;
             }
 
             Vector3 origin = centerEyeAnchor.transform.position + omniOriginOffset;
 
-            Direction = gestureRecognizer.GetBonePosition(currentBone) - origin;
+            Direction = leftGestureRecognizer.GetBonePosition(currentBone) - origin;
 
             if (Direction.magnitude < 0.1f)
                 Direction = Vector3.zero;
@@ -134,7 +151,35 @@ public class DroneMotor : MonoBehaviour
         if (isFlyingForward)
             Direction = forwardDirection;
 
-        rb.velocity = !isDead ? Direction.normalized * coefficient * Speed : Vector3.zero;
+        rb.velocity = Direction.normalized * coefficient * Speed;
+
+        if (isPointing)
+        {
+            // up control
+
+            const int prev = 32;
+            const int next = 20;
+
+            Vector3 prevToNext = (rightGestureRecognizer.GetBonePosition(next) - rightGestureRecognizer.GetBonePosition(prev)).normalized;
+            rb.velocity += Vector3.up * Vector3.Dot(prevToNext, Vector3.up) * Speed;
+
+            // rotation
+
+            Vector3 cross = Vector3.Cross(centerEyeAnchor.transform.forward, Vector3.up).normalized;
+            float rotationCoefficient = Mathf.Clamp(1.5f * Vector3.Dot(prevToNext, cross), -1, 1);
+            rotationCoefficient = Mathf.Pow(Mathf.Abs(rotationCoefficient), 2f) * -Mathf.Sign(rotationCoefficient);
+            rb.angularVelocity = Vector3.up * rotationCoefficient * Mathf.Deg2Rad * AngularSpeed;
+            forwardDirection = Quaternion.Euler(rb.angularVelocity * Time.fixedDeltaTime * Mathf.Rad2Deg) * forwardDirection;
+        }
+        else
+        {
+            rb.angularVelocity = Vector3.zero;
+        }
+
+
+
+
+        
     }
 
     void OnTriggerEnter(Collider other)

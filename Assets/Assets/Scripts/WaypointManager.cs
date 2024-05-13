@@ -40,10 +40,7 @@ public class WaypointManager : MonoBehaviour
     {
         centerEyeAnchor = GameObject.Find("CenterEyeAnchor");
 
-        gestureRecognizer.GetRecognizedEvent("Peace").AddListener(p =>
-        {
-            waypointLine.enabled = p;
-        });
+        gestureRecognizer.GetRecognizedEvent("Peace").AddListener(p => waypointLine.enabled = currentWaypoint < waypoints.Count && p);
 
         waypointPositions = ParseFile.Parse(trackFile);
         for (int i = 0; i < waypointPositions.Count; i++)

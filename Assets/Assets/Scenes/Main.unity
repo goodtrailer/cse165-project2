@@ -584,11 +584,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae7e3e43e9b36974f92e41f661db55bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  recognizeThreshold: 0.985
+  recognizeThreshold: 0.975
   gestures:
   - <Name>k__BackingField: Peace
     <Magnitude>k__BackingField: 4.8989806
-    <Similarity>k__BackingField: 0.95567703
+    <Similarity>k__BackingField: 0.9420624
     OnRecognized:
       m_PersistentCalls:
         m_Calls: []
@@ -617,6 +617,37 @@ MonoBehaviour:
     - {x: -0.26674378, y: 0.9552645, z: 0.07594628, w: -0.102713235}
     - {x: -0.8870489, y: -0.41869414, z: 0.1740702, w: 0.08683126}
     - {x: -0.9146386, y: -0.2908036, z: 0.23868404, w: 0.14798613}
+  - <Name>k__BackingField: Point
+    <Magnitude>k__BackingField: 4.8989797
+    <Similarity>k__BackingField: 0.9964416
+    OnRecognized:
+      m_PersistentCalls:
+        m_Calls: []
+    data:
+    - {x: -0.000000005266579, y: 1, z: 0.000000027329511, w: -0.0000000433159}
+    - {x: -0.000000005266579, y: 1, z: 0.000000027329511, w: -0.0000000433159}
+    - {x: -0.10681567, y: 0.81985116, z: -0.43200862, w: 0.36028206}
+    - {x: -0.14256877, y: 0.5907597, z: -0.7020547, w: 0.37120944}
+    - {x: -0.2861414, y: 0.6058426, z: -0.7294077, w: 0.13799489}
+    - {x: -0.34332746, y: 0.5215359, z: -0.7646432, w: 0.15952328}
+    - {x: -0.11194783, y: 0.9928876, z: -0.031168105, w: -0.025896693}
+    - {x: -0.14116837, y: 0.98931336, z: -0.0052766693, w: -0.036098197}
+    - {x: -0.0690407, y: 0.99550307, z: 0.004204158, w: -0.06472982}
+    - {x: -0.5946038, y: 0.79956657, z: 0.052404616, w: -0.06628418}
+    - {x: -0.9919466, y: 0.08053749, z: 0.09748876, w: -0.007193107}
+    - {x: -0.87662345, y: -0.46529147, z: 0.11565355, w: -0.040738076}
+    - {x: -0.6615901, y: 0.7411282, z: 0.1029697, w: -0.04924328}
+    - {x: -0.9872839, y: 0.036215816, z: 0.15211202, w: 0.02865407}
+    - {x: -0.8568671, y: -0.48940188, z: 0.14276667, w: 0.07669663}
+    - {x: -0.018311782, y: 0.9680417, z: 0.20703596, w: -0.14034282}
+    - {x: -0.64696366, y: 0.7400961, z: 0.1835641, w: -0.00025006023}
+    - {x: -0.97550267, y: 0.07657727, z: 0.19561833, w: 0.06530122}
+    - {x: -0.8659068, y: -0.4398825, z: 0.17424868, w: 0.16231601}
+    - {x: -0.34332746, y: 0.5215359, z: -0.7646432, w: 0.15952328}
+    - {x: -0.0690407, y: 0.99550307, z: 0.004204158, w: -0.06472982}
+    - {x: -0.87662345, y: -0.46529147, z: 0.11565355, w: -0.040738076}
+    - {x: -0.8568671, y: -0.48940188, z: 0.14276667, w: 0.07669663}
+    - {x: -0.8659068, y: -0.4398825, z: 0.17424868, w: 0.16231601}
   isSaving: 1
 --- !u!1 &608034169
 GameObject:
@@ -1894,7 +1925,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -398.7}
+  m_AnchoredPosition: {x: 0, y: -330.8}
   m_SizeDelta: {x: 500, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1569985763
@@ -2574,7 +2605,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   <Direction>k__BackingField: {x: 0, y: 0, z: -1}
-  <Speed>k__BackingField: 20
+  <Speed>k__BackingField: 30
+  <AngularSpeed>k__BackingField: 150
   groundLayer:
     serializedVersion: 2
     m_Bits: 8
@@ -2585,7 +2617,8 @@ MonoBehaviour:
   deathFade: {fileID: 245383323}
   deathTimer: {fileID: 470786717}
   lapStopwatch: {fileID: 1996264710}
-  gestureRecognizer: {fileID: 655113100}
+  leftGestureRecognizer: {fileID: 655113100}
+  rightGestureRecognizer: {fileID: 563791225}
   currentBone: 9
 --- !u!1 &1996264705
 GameObject:
@@ -2622,7 +2655,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -460}
+  m_AnchoredPosition: {x: 0, y: -392.09998}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1996264708
